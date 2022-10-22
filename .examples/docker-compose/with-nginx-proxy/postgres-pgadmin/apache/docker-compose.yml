@@ -1,0 +1,73 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:alpine
+    #restart: always
+    volumes:
+      - db:/var/lib/postgresql/data
+    env_file:
+      - db.env
+    networks:
+      - db_network
+      - nc_network
+
+  redis:
+    image: redis:alpine
+    networks:
+      - nc_network
+    #restart: always
+
+  app:
+    image: nextcloud:apache
+    #restart: always
+    volumes:
+      - nextcloud:/var/www/html
+    environment:
+      - POSTGRES_HOST=db
+      - REDIS_HOST=redis
+     # - POSTGRES_HOST="http://db:5432"
+     # - REDIS_HOST="http://redis:6379"
+    env_file:
+      - db.env
+    depends_on:
+      - db
+      - redis
+    networks:
+      - nc_network
+
+  nginx:
+    image: nginx:alpine
+    #restart: always
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./proxy:/etc/nginx/conf.d
+      #- certs:/etc/nginx/certs:ro
+      #- vhost.d:/etc/nginx/vhost.d
+    networks:
+      - nc_network
+
+  pgadmin:
+    container_name: pgadmin4_container
+    image: dpage/pgadmin4
+    #restart: always
+    env_file:
+      - db.env
+    expose:
+      - 80
+    networks:
+      - nc_network
+      - db_network
+
+volumes:
+  db:
+  nextcloud:
+  certs:
+  vhost.d:
+  html:
+
+networks:
+  nc_network:
+  db_network:
