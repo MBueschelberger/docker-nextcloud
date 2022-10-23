@@ -6,7 +6,7 @@ services:
     volumes:
       - db:/var/lib/postgresql/data
     env_file:
-      - db.env
+      - .env
     networks:
       - db_network
       - nc_network
@@ -18,40 +18,40 @@ services:
 
   app:
     image: nextcloud:apache
-    #restart: always
     volumes:
       - nextcloud:/var/www/html
     environment:
       - POSTGRES_HOST=db
       - REDIS_HOST=redis
     env_file:
-      - db.env
+      - .env
     depends_on:
       - db
       - redis
     networks:
       - nc_network
 
+  sftp:
+    image: atmoz/sftp
+    volumes:
+      - ${SFTP_MOUNT}:${SFTP_HOME}/download
+      - ${SFTP_RSA_PUB}:${SFTP_HOME}/.ssh/keys/id_rsa.pub:ro
+    command: ${SFTP_USER}:${SFTP_PASSWORD}:1001
+    env_file:
+      - .env
+    networks:
+      nc_network:
+        ipv4_address: 10.0.0.7
+
   nginx:
     image: nginx:alpine
-    ports:
-      - 80:80
-      - 443:443
+    expose:
+      - 80
+      - 443
     volumes:
       - ./proxy:/etc/nginx/conf.d
     networks:
       - nc_network
-
-  pgadmin:
-    container_name: pgadmin4_container
-    image: dpage/pgadmin4
-    env_file:
-      - db.env
-    expose:
-      - 80
-    networks:
-      - nc_network
-      - db_network
 
 volumes:
   db:
@@ -59,4 +59,12 @@ volumes:
 
 networks:
   nc_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.0.0/16
   db_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
